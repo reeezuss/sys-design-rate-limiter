@@ -158,3 +158,59 @@ In a video-sharing platform, processing a 4K upload is CPU-intensive. If your in
 
 ## Sliding Window Counter
 
+### Core Components
+- Current & Previous Windows: Uses two fixed-window counters to represent a sliding duration.
+- Window Approximation: Combines the current window count with a weighted portion of the previous window.
+- Weighted Estimate: Instead of a hard reset at the window boundary, it gradually "slides" the count from the old window into the new one using the formula: `Count_prev * (1 - percent_into_current) + Count_curr`
+- Low Memory: Only stores two integers per user (current and previous count), regardless of request volume. 💾
+
+### Practical Scenarios
+- Global API Rate Limits: When you need to enforce a limit like "5,000 requests per minute" across a massive user base, "edge-of-the-minute" spikes without storing billions of timestamps. It's accurate enough to stop abuse without the `O(n)` memory cost of a log.
+- DDoS Mitigation: Helping an edge proxy (like Cloudflare) decide if a burst is legitimate or a bot attack by looking at a smoothed traffic rate. 
+- 🛡️Microservices Communication: Service A calling Service B can use this to stay within a steady "requests per second" budget.
+
+### ⚙️ Engineering Trade-offs
+- Accuracy: High (though technically an approximation). It assumes traffic in the previous window was evenly distributed. Near-perfect for steady traffic and it only becomes slightly inaccurate if the previous window's traffic was heavily skewed toward one end.
+- ✅Memory: Excellent. `O(1)` space complexity per user. 
+- ⚡Complexity: Medium. Requires careful handling of the overlap math.
+
+#### Back to the Sliding Window Counter Challenge ⚖️
+- Now that the Log (which stores every event) is clearer, let's look back at the Counter (which uses math to estimate).
+- In the Sliding Window Counter example:
+  - We are 45 seconds into the current 60-second minute.
+  - This means our "rolling 60-second window" covers:
+    - The first 45 seconds of the current minute.
+    - The last 15 seconds of the previous minute.
+- If the previous minute had 100 requests, we need to calculate how many of them "count" toward our current 60-second sliding window.
+
+> Since we are looking at the last 15 seconds of that previous 60-second block, what percentage (or fraction) of those 100 requests would we include in our estimate? 🧐
+
+##### The Calculation 🧮
+- If we use your answer of 25% (0.25) on those 100 requests from the previous minute:
+  - Weighted Previous Count: `100 * 0.25 = 25` requests.
+  - Current Count: Let's say we've made 10 requests so far in the current 45 seconds.
+  - Estimated Total: `25 + 10 = 35` requests.
+- Why this stops the "Double-Drip" 🛡️?
+  - In the Fixed Window algorithm, the moment the clock hit 10:01:00, the 100 requests from the previous minute would have vanished instantly, letting the user "burst" another 100.
+  - In the Sliding Window Counter, at the very start of the new minute (say, 1 second in), the weight for the previous minute is still nearly 100%. The estimate would be almost 100, meaning the user is still blocked. They have to wait for the "weight" of that old burst to gradually decay as time passes.
+
+-----------------------------------------------------------------------------------------
+
+## Final Review of the 5 Algorithms 🏁
+
+- **Token Bucket**: Great for bursts. 🪙
+- **Leaking Bucket**: Great for smoothing. 🚰
+- **Fixed Window**: Simplest, but has the double-dip bug. 🪟
+- **Sliding Window Log**: Most accurate, but a memory hog. 🪵
+- **Sliding Window Counter**: The optimized hybrid. ⚖️
+
+### Comparison Recap 🏁
+> We've covered a lot of ground! Here is how a lead engineer at a startup would view these 5 algorithms:
+
+| Algorithm | Best For... | Main Weakness |
+| --------- | ----------- | ------------- |
+| Token Bucket 🪙 | Handling bursts (standard API use) | Can be complex to implement across servers |
+| Leaking Bucket 🚰 | Protecting fragile downstream systems | Adds latency/queuing delay |
+| Fixed Window 🪟 | Simple hourly/daily quotas | Vulnerable to "boundary bursts" |
+| Sliding Window Log 🪵 | Precise security/financial limits | Massive memory usage |
+| Sliding Window Counter ⚖️ | Scalable, high-traffic API limiting | It's an approximation, not exact |
