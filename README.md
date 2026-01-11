@@ -73,3 +73,8 @@
 - Supports Bursts: Unlike other algorithms, this allows a user to send a spike of traffic as long as they have "saved up" tokens.
 - Memory Efficient: You only need to store two numbers (token count and last timestamp) per user/key.
 - Flexible: Different endpoints can require different numbers of tokens (e.g., a heavy POST costs 5 tokens, while a light GET costs 1).
+
+------------------------------------------------------------------------------
+
+## Leaking Bucket Algorithm
+
