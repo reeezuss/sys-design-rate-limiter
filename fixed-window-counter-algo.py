@@ -1,4 +1,5 @@
 """
+We use integer division on the current Unix timestamp to create discrete, non-overlapping blocks of time. Each block (window) is assigned a unique integer ID.
 This algorithm is static in nature in comparison to token bucket and leaking bucket.
 Most basic kind of rate limiting algorithm for APIs like 1000 request per hour, etc.
 """

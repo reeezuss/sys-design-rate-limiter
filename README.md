@@ -85,7 +85,8 @@
 
 > The primary goal of a Leaking Bucket is **Traffic Smoothing** (shape traffic) and **provide predictability** for downstream systems. If you have a backend database that can only handle exactly 50 queries per second without crashing, a Leaking Bucket ensures that even if a user sends 500 requests in a single second, your database only sees a steady 50/sec stream.
 
-### Scenarios
+### Practical Scenarios
+
 #### Database Write Smoothing 🗄️
 Imagine a high-traffic startup where users are constantly updating their profiles. If 10,000 users hit "Save" at the exact same second, your database might lock up or crash. 💥
 - The Bucket: Acts as a buffer for these "write" requests.
@@ -108,3 +109,31 @@ In a video-sharing platform, processing a 4K upload is CPU-intensive. If your in
 - Memory: Unlike Token Bucket (which just stores a number), a Leaking Bucket (if implemented as a real queue) needs memory for every item in the queue.
 - Latency: It forces a delay on requests during spikes, as they must wait their turn to "leak."
 
+-----------------------------------------------------------------------------------------
+
+## Fixed Window Algorithm
+
+### Core Components
+- Window ID: Calculated as current_time / window_size. This ensures every request in a specific 60-second block (or whatever size you choose) hits the same counter.
+- Counter: A simple integer that resets mentally every time a new window starts.
+
+### Engineering Trade-offs
+- Pros: Extremely memory-efficient (only 1 integer per window) and very fast (O(1) time complexity).
+- Cons: Vulnerable to spikes at the edges of windows. Can allow double the intended traffic in a short burst across a boundary.
+
+### Practical Scenarios
+- Tiered API Plans: If you offer a "Free Tier" allowing 1,000 requests per day, this algorithm is perfect. It's easy for the user to understand: "My limit resets at midnight."
+- Newsletter Signups: To prevent bot spam on a signup form, you might limit a specific IP address to 5 attempts per hour.
+- Heavy Computation Endpoints: For an AI startup, you might limit a user to 10 "Image Generations" per minute to ensure your GPU cluster isn't monopolized by one person.
+
+### The Critical Flaw: The "Edge Case" ⚠️
+> This algorithm has a major vulnerability known as the "Boundary Problem." Imagine your limit is 100 requests per minute. Because each window is an independent bucket, a user can exhaust the limit at the very end of Window A and immediately use the full limit again at the start of Window B.
+- User A sends 100 requests at 10:00:59. (Accepted ✅)
+- The window resets at 10:01:00.
+- User A sends another 100 requests at 10:01:01. (Accepted ✅)
+
+### How to mitigate this:
+- Lower the Limit: Set the limit lower than the actual system capacity to provide a "buffer" for these spikes.
+- Use Smaller Windows: Instead of 1,000 requests per hour, use 16 requests per minute. This spreads the "edge" risk over more frequent intervals.
+
+---------------------------------------------------------------------------------------
