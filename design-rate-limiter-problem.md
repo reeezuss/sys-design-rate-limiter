@@ -76,3 +76,4 @@ In a system design interview, a solid strategy is to implement a fail-open appro
   - Data Schema: Use Redis with keys like rl:{user_id}:{timestamp} and TTLs for auto-cleanup.
   - Distributed Logic: Use Lua Scripts to make the "Check-and-Increment" step atomic. 🔒
   - High Availability: Discuss the fail-open/local fallback mentioned above.
+-----------------------------------------------------------------------------------------
