@@ -137,3 +137,24 @@ In a video-sharing platform, processing a 4K upload is CPU-intensive. If your in
 - Use Smaller Windows: Instead of 1,000 requests per hour, use 16 requests per minute. This spreads the "edge" risk over more frequent intervals.
 
 ---------------------------------------------------------------------------------------
+
+## Sliding Window Log
+
+### Core Components
+- The Log: A time-sorted list or set containing the Unix timestamps of every successful request made by a specific user. 📜
+- The Rolling Window: A dynamic time range (e.g., now to now - 60 seconds).
+- Dynamic Cleanup: On every request, the algorithm performs a "sweep" to remove timestamps that have aged out of the current rolling window. 🧹
+
+### Practical Scenarios
+- Financial Anti-Fraud: Limiting a user to "3 credit card attempts per 60 seconds." Since fraud bots often probe boundaries, the precision of a sliding log is non-negotiable here. 💳
+- High-Value API Endpoints: If an endpoint triggers an expensive AI model or a physical action (like unlocking a smart door), you want exact enforcement to prevent abuse. 🤖
+- Strict Security Compliance: For systems requiring audit trails, the log itself doubles as a record of when traffic spikes occurred.
+
+### Engineering Trade-offs & Limitations
+- Precision: 100% accurate. It reflects the true rate of traffic at any given millisecond. - ✅Memory Usage: High. Memory scales `O(n)` with the number of requests. Storing a timestamp for every request is expensive at scale. 
+- 💾Performance: Variable. As the number of requests grows, the cost of filtering the list (cleanup) increases. In high-traffic systems, this can lead to latency spikes during the "cleanup" phase. ⏳
+
+-----------------------------------------------------------------------------------------
+
+## Sliding Window Counter
+
