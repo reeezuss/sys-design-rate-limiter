@@ -78,3 +78,33 @@
 
 ## Leaking Bucket Algorithm
 
+### Core Components
+- The Queue (The Bucket): A FIFO structure that holds incoming requests. Its Capacity determines the maximum number of requests that can be "queued" for processing.
+- The Drip (Leak Rate): The fixed rate at which requests are removed from the queue and passed to the underlying system.
+- Overflow: If a request arrives and the queue is at capacity, it is dropped immediately.
+
+> The primary goal of a Leaking Bucket is **Traffic Smoothing** (shape traffic) and **provide predictability** for downstream systems. If you have a backend database that can only handle exactly 50 queries per second without crashing, a Leaking Bucket ensures that even if a user sends 500 requests in a single second, your database only sees a steady 50/sec stream.
+
+### Scenarios
+#### Database Write Smoothing 🗄️
+Imagine a high-traffic startup where users are constantly updating their profiles. If 10,000 users hit "Save" at the exact same second, your database might lock up or crash. 💥
+- The Bucket: Acts as a buffer for these "write" requests.
+- The Leak: We process exactly 100 writes per second—the maximum your database can handle comfortably without increasing latency for other queries.
+- The Benefit: You transform a dangerous spike into a manageable, steady stream.
+
+#### Third-Party API Compliance ☁️
+Many professional services (like Twilio for SMS or Stripe for payments) have strict, non-negotiable rate limits. If you exceed them, they might block your account or charge heavy penalties. 💸
+- The Bucket: Holds your outgoing API calls.
+- The Leak: Set precisely to the third party's limit (e.g., 50 requests per second).
+- The Benefit: Your application logic can "burst" requests into the bucket, but your outgoing infrastructure ensures you never violate the external provider's terms.
+
+#### Video Ingest & Processing 📽️
+In a video-sharing platform, processing a 4K upload is CPU-intensive. If your ingest server tries to process 20 uploads simultaneously, the entire machine might become unresponsive. 🖥️
+- The Bucket: A queue of "Processing Jobs."
+- The Leak: Jobs are pulled for processing only when CPU resources are available at a constant rate (e.g., 2 videos at a time).
+- The Benefit: It prevents "Resource Exhaustion" and ensures that once a process starts, it has the resources to finish.
+
+### Limitations
+- Memory: Unlike Token Bucket (which just stores a number), a Leaking Bucket (if implemented as a real queue) needs memory for every item in the queue.
+- Latency: It forces a delay on requests during spikes, as they must wait their turn to "leak."
+
