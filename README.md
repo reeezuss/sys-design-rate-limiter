@@ -109,7 +109,7 @@ A high-performance rate-limiting service built with **FastAPI** and **Redis Lua*
 
 1. Install Locust: `uv add locust`
 2. Start the API: `uvicorn main:app --port 8000`
-3. Run the Load Test: `locust -f locustfile.py --host http://localhost:8000`
+3. Run the Load Test: `locust -f locust_load_test.py --host http://localhost:8000`
 4. **Observe:** In the Locust UI, you will see the `429` error rate climb once the "Free" tier thresholds are crossed.
 
 ### 🏗️ Future-Proofing (Scaling to 100M DAU)
