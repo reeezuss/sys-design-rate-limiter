@@ -1,7 +1,8 @@
 from fastapi import FastAPI, Depends
 from limiter import RateLimiter
+from tiered_limiter import DynamicRateLimiter
 
-app = FastAPI(title="High-Scale Rate Limited API")
+app = FastAPI(title="High-Scale Service-aware Tiered Rate Limited API")
 
 # Configuration: 5 requests per 60 seconds
 # This dependency can be applied globally or per-route
@@ -27,6 +28,18 @@ async def heavy_task():
     Specific limit for expensive operations (2 requests per 10s).
     """
     return {"message": "Expensive computation successful"}
+
+# Instantiate limiters for different service domains
+payment_limit = DynamicRateLimiter("payments")
+marketing_limit = DynamicRateLimiter("marketing")
+
+@app.post("/payments/charge", dependencies=[Depends(payment_limit)])
+async def create_charge():
+    return {"status": "payment_processed"}
+
+@app.get("/marketing/stats", dependencies=[Depends(marketing_limit)])
+async def get_stats():
+    return {"stats": "marketing_data"}
 
 if __name__ == "__main__":
     import uvicorn
