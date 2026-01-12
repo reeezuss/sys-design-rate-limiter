@@ -11,19 +11,20 @@ class DynamicRateLimiter:
 
     async def __call__(self, request: Request):
         user_id = request.headers.get("X-Forwarded-For") or request.client.host
-        tier = get_user_tier(user_id)
         
-        # Look up the specific rules for this service and user tier
+        # PRODUCTION PATTERN: Fetch user tier from Redis (cached from DB)
+        # This avoids a slow DB hit on every single API request.
+        tier = r.get(f"user:tier:{user_id}") or "free"
+        
         service_rules = RATE_LIMIT_RULES.get(self.service_name, RATE_LIMIT_RULES["default"])
         rule = service_rules.get(tier, RATE_LIMIT_RULES["default"])
         
-        limit = rule["limit"]
-        window = rule["window"]
-
-        if not self._sliding_window_counter(user_id, limit, window):
+        if not self._sliding_window_counter(user_id, rule["limit"], rule["window"]):
+            # Strategic: Include 'Retry-After' header for professional clients
             raise HTTPException(
-                status_code=429, 
-                detail=f"Rate limit exceeded for {self.service_name} API. Upgrade to PRO for higher limits."
+                status_code=429,
+                detail=f"Quota exceeded for {self.service_name}. Tier: {tier}",
+                headers={"Retry-After": str(rule["window"] // 2)}
             )
 
     def _sliding_window_counter(self, user_id: str, limit: int, window: int) -> bool:
