@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:alpine
+    container_name: rate-limiter-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build: .
+    container_name: rate-limiter-api
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Optional: Locust for load testing
+  locust:
+    image: locustio/locust
+    container_name: rate-limiter-locust
+    ports:
+      - "8089:8089"
+    volumes:
+      - ./locust_load_test.py:/locust/locustfile.py
+    command: -f /locust/locustfile.py --host http://api:8000
+    depends_on:
+      - api
